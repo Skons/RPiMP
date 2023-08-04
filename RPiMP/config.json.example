@@ -1,0 +1,8 @@
+{
+    "Hostname": "sonoffs26.lan",
+    "EncryptionKey": "EncryptionKey",
+    "DelaySwitchName": "Sonoff S26 Delay Switch",
+    "RealDelaySwitchName": "Sonoff S26 Real Delay Switch",
+    "LogLevel": "Info",
+    "LogFile": true
+}
