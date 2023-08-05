@@ -77,8 +77,8 @@ binary_sensor:
       - switch.toggle: delay_switch
     on_double_click:
       - switch.turn_off: relay
-  - platform: status
-    name: "Sonoff S26 Status"
+#  - platform: status #Enable if HA is to be connected
+#    name: "Sonoff S26 Status"
 
 switch:
   - platform: template
@@ -111,7 +111,7 @@ switch:
     turn_off_action:
       then:
         - if:
-            condition: #only when the relay is on. by default it resembles the relay, but there are race conditions
+            condition: #Disable the relay only when it is on
               lambda: |-
                 if (id(relay).state) {
                   return true;

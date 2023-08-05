@@ -4,15 +4,15 @@ Rasberry Pi Manager of Power is tooling that creates a power on and power off th
 
 ## How it works
 
-The ESP device will powerup and power down the RPi based on schedules. Upon shutting down the `delay switch` is called, which in his switches the `real delay switch`. They are seperate due to lack of multithread support on an ESP8326. The `real delay switch` will wait 15 seconds and then switch of the power by switching the relay. The `real delay switch` is only exposed so the `RPiMP` can call it.
+The ESP device will powerup and and trigger a power down the RPi based on schedules. Shutting down is done via the `delay switch`, which is captured by the RPi. This will start the shutdown on the RPi, but before it does that, it will switch the `real delay switch` to off. The `real delay switch` will wait 15 seconds and then it switches off the power by switching the relay to off. The `real delay switch` is only exposed so the `RPiMP` service can call it, it is best not to be switched manually.
 
-The moment when the `delay switch` switches off, the RPi will initiate a shutdown. This is done with the `RPiMP` service that runs on the RPi. This serice monitors changes on the ESP through `aioesphome`.
+The moment when the `delay switch` is switched off, the RPi will initiate a shutdown. This is done with the `RPiMP` service that runs on the RPi. This serice monitors changes on the ESP through `aioesphome`.
 
 The `delay switch` is also called when the physical button is pressed once. If the physical button is pressed 2 times, the power is immidiately switched off, without going through a sane shutdown on the RPi. This is a failsafe if needed.
 
 ## Why
 
-This is developed for an RPi that only needs to be enabled for a specific time, and when there is no Home Assistant around.
+This is developed for an RPi that needs to be up during schedules. It works without Home Assistant, but with Home Assistant it creates a single point of schedule management. There is no need to configure the RPi, only ESP or Home Assistant can manage the power state of the RPi.
 
 ## ESPHome smart plug
 
@@ -22,15 +22,20 @@ In the ESPHome folder there is an example on how to configure an `Sonoff S26` sm
 
 Copy the RPiMP folder to the home folder on the RPi. If git is installed:
 
-```
+```bash
 git clone https://github.com/Skons/RPiMP
 ```
 
 Copy the `config.json.example` to `config.json` and edit the file. See [config.json](#configjson)
 
-```
+```bash
 cd RPiMP
 pip install -r requirements.txt
+```
+
+Make sure the path to the `RPiMP` folder in the `RPiMP.service` file is correct.
+
+```bash
 sudo cp RPiMP.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable RPiMP.service
@@ -49,7 +54,7 @@ ERROR: Failed building wheel for cryptography
 
 Rust needs to be installed, execute:
 
-```
+```bash
 curl https://sh.rustup.rs -sSf | sh
 source "$HOME/.cargo/env"
 ```
@@ -57,7 +62,7 @@ source "$HOME/.cargo/env"
 After it is done rerun the requirements installation. To remove rustup execute:
 
 
-```
+```bash
 rustup self uninstall
 ```
 
@@ -70,7 +75,7 @@ error: could not find system library 'openssl' required by the 'openssl-sys' cra
 Execute the following command:
 
 
-```
+```bash
 sudo apt install libssl-dev
 ```
 

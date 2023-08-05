@@ -105,7 +105,7 @@ async def main():
 	host = config['Hostname']
 	encryption_key = config['EncryptionKey']
 	client_name = "RPiMP"
-	client_info = f"{client_name} 2023.8.1.1"
+	client_info = f"{client_name} 2023.8.5.1"
 
 	delay_switch = None
 	real_delay_switch = None
