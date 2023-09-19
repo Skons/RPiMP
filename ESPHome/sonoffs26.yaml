@@ -17,6 +17,14 @@ globals:
     type: int
     restore_value: off
     initial_value: '0'
+  - id: heartbeat_counter
+    type: int
+    restore_value: off
+    initial_value: '0'
+  - id: max_heartbeat_missed
+    type: int
+    restore_value: off
+    initial_value: '20' #20 is 10 minutes. The heartbeat watcher waits 30 seconds. Make sure it is more then 5 minutes, RPiMP has a 5 minute timeout for reconnect
 
 wifi:
   domain: .lan
@@ -127,11 +135,29 @@ switch:
             else:
               - logger.log: "Relay is already off"
               - switch.turn_off: delay_switch #make sure the delay switch is turned off
+  - platform: template
+    name: "Sonoff S26 Heartbeat Switch"
+    id: "heartbeat_switch"
+    restore_mode: RESTORE_DEFAULT_OFF
+    turn_on_action:
+      - logger.log: "Set heartbeat_counter to 0, switch the heartbeat_switch off"
+      - script.stop: heartbeat_watcher
+      - lambda: id(heartbeat_counter) = 0;
+      - delay: 3s
+      - switch.turn_off: heartbeat_switch
+    turn_off_action:
+      - logger.log: "Setting hearbeat switched to off"
+      - script.execute: heartbeat_watcher
   - platform: gpio
     name: "Sonoff S26 Relay"
     restore_mode: RESTORE_DEFAULT_ON
     pin: GPIO12
     id: 'relay'
+    on_turn_on:
+      - lambda: "id(delay_switch_status) = 1;"
+    on_turn_off:
+      - script.stop: heartbeat_watcher
+      - lambda: "id(delay_switch_status) = 0;"
   - platform: restart
     name: "Sonoff S26 Restart"
 
@@ -144,3 +170,23 @@ text_sensor:
       strftime(str, sizeof(str), "%Y-%m-%d %H:%M", localtime(&currTime));
       return  { str };
     update_interval: 60s
+
+script:
+  - id: heartbeat_watcher
+    mode: single
+    then:
+      - logger.log: "Starting heartbeat_watcher, getting in to the loop"
+      - while:
+          condition:
+            lambda: |-
+              return true;
+          then:
+            - logger.log: {level: DEBUG, format: "Heartbeat not received counter: %i ", args: [id(heartbeat_counter)]}
+            - lambda: |-
+                id(heartbeat_counter) += 1;
+                if (id(heartbeat_counter) >= id(max_heartbeat_missed)) {
+                  ESP_LOGI("heartbeat", "Max heartbeats missed, switching relay to off");
+                  id(relay).turn_off();
+                  id(heartbeat_watcher).stop();
+                }
+            - delay: 30s

@@ -10,7 +10,7 @@ from aioesphomeapi import (
 )
 
 async def main():
-	global delay_switch,real_delay_switch,is_disconnected
+	global delay_switch,real_delay_switch,heartbeat_switch,is_disconnected
 
 	def get_config():
 		"""Parse config from a JSON file"""
@@ -20,12 +20,17 @@ async def main():
 		return data
 
 	def change_callback(state):
-		"""Capture the change of the delay switch, trigger the real delay switch and shutdown the system"""
-		global delay_switch,real_delay_switch
-		if state.key == delay_switch.key and state.state == False:
+		"""Capture the change of the defined switches and act accordingly"""
+		global delay_switch,real_delay_switch,heartbeat_switch
+		logging.debug(f"Received state key '{state.key}' with state '{state.state}'")
+		if state.key == delay_switch.key and state.state == False: # Trigger the real delay switch and shutdown the system
 			logging.info(f"Delay switch '{delay_switch.name}' is switched off, switching '{real_delay_switch.name}' with key '{real_delay_switch.key}' to off")
-			coro = cli.switch_command(real_delay_switch.key,False)
-			asyncio.get_event_loop().create_task(coro).add_done_callback(initiate_shutdown) #change_callback is not async, this solution solves that problem
+			coro_delay = cli.switch_command(real_delay_switch.key,False)
+			asyncio.get_event_loop().create_task(coro_delay).add_done_callback(initiate_shutdown) #change_callback is not async, this solution solves that problem
+		else: # There is an upate from the esp device, providing a heartbeat
+			logging.info(f"Switching '{heartbeat_switch.name}' with key '{heartbeat_switch.key}' to on")
+			coro_heartbeat = cli.switch_command(heartbeat_switch.key,True)
+			asyncio.get_event_loop().create_task(coro_heartbeat) #change_callback is not async, this solution solves that problem
 
 	def initiate_shutdown(task):
 		"""Handle shutdown"""
@@ -34,16 +39,19 @@ async def main():
 
 	async def on_connect() -> None:
 		"""Try to find the delay and real delay switch based on the friendly name from the config. Then trigger change_callback for entity changes."""
-		global delay_switch,real_delay_switch,is_disconnected
+		global delay_switch,real_delay_switch,heartbeat_switch,is_disconnected
 		entities = await cli.list_entities_services()
 		logging.debug(f"Found '{entities[0].count}' entities")
 		for entity in entities[0]:
-			if entity.name == delay_switch_name:
+			if entity.name.lower() == delay_switch_name.lower():
 				logging.info(f"Found delay switch '{entity.name}' with id '{entity.object_id}' and key '{entity.key}'")
 				delay_switch = entity
-			elif entity.name == real_delay_switch_name:
+			elif entity.name.lower() == real_delay_switch_name.lower():
 				logging.info(f"Found real delay switch '{entity.name}' with id '{entity.object_id} and key '{entity.key}'")
 				real_delay_switch = entity
+			elif entity.name.lower() == heartbeat_switch_name.lower():
+				logging.info(f"Found hearbeat switch '{entity.name}' with id '{entity.object_id}' and key '{entity.key}'")
+				heartbeat_switch = entity
 			else:
 				logging.debug(f"Ignoring '{entity.object_id}' with name '{entity.name}'")
 
@@ -55,10 +63,19 @@ async def main():
 			error = f"Unable to find real delay switch with name '{real_delay_switch_name}'"
 			logging.error(error)
 			raise Exception(error)
+		if heartbeat_switch == None:
+			error = f"Unable to find heartbeat switch with name '{heartbeat_switch_name}'"
+			logging.error(error)
+			raise Exception(error)
 
 		logging.debug(f"Key to watch for delay switch '{delay_switch.name}' is '{delay_switch.key}'")
 		logging.debug(f"Key to toggle real delay switch '{real_delay_switch.name}' is '{real_delay_switch.key}'")
+		logging.debug(f"Key to watch for heartbeat switch '{heartbeat_switch.name}' is '{heartbeat_switch.key}'")
 
+		# Switch the heartbeat switch to on
+		coro = cli.switch_command(heartbeat_switch.key,True)
+		asyncio.get_event_loop().create_task(coro) #change_callback is not async, this solution solves that problem
+		logging.info(f"Switched '{heartbeat_switch.name}' to off to start the heartbeat dance")
 		is_disconnected = False
 
 		try:
@@ -105,15 +122,17 @@ async def main():
 	host = config['Hostname']
 	encryption_key = config['EncryptionKey']
 	client_name = "RPiMP"
-	client_info = f"{client_name} 2023.8.5.1"
+	client_info = f"{client_name} 2023.9.19.1"
 
 	delay_switch = None
 	real_delay_switch = None
+	heartbeat_switch = None
 
 	is_disconnected = True
 
 	delay_switch_name = config['DelaySwitchName']
 	real_delay_switch_name = config['RealDelaySwitchName']
+	heartbeat_switch_name = config['HeartbeatSwitchName']
 	password = None
 	if "Password" in config and config['Password']:
 		password = config['Password']

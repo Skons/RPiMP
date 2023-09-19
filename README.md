@@ -10,9 +10,11 @@ The moment when the `delay switch` is switched off, the RPi will initiate a shut
 
 The `delay switch` is also called when the physical button is pressed once. If the physical button is pressed 2 times, the power is immidiately switched off, without going through a sane shutdown on the RPi. This is a failsafe if needed.
 
+Another failsafe is the `heartbeat switch`. This is switched on by RPiMP. If it has not been on for the defined number, the relay will be switched off. If RPiMP crashes for some reason, or loses connection the power will be cut off.
+
 ## Why
 
-This is developed for an RPi that needs to be up during schedules. It works without Home Assistant, but with Home Assistant it creates a single point of schedule management. There is no need to configure the RPi, only ESP or Home Assistant can manage the power state of the RPi.
+This is developed for an RPi that needs to be up during schedules. I.e. a backup disk that only needs to be up during backup. It works without Home Assistant, but with Home Assistant it creates a single point of schedule management. There is no need to configure the RPi, only ESP or Home Assistant can manage the power state of the RPi.
 
 ## ESPHome smart plug
 
@@ -79,9 +81,9 @@ Execute the following command:
 sudo apt install libssl-dev
 ```
 
-### config.json
+### Configure RPiMP
 
-After installation, edit the `config.json`
+#### config.json
 
 ```json
 {
@@ -89,7 +91,36 @@ After installation, edit the `config.json`
     "EncryptionKey": "EncryptionKey", //EncryptionKey configured in the yaml
     "DelaySwitchName": "Sonoff S26 Delay Switch", //friendly name of the delay switch
     "RealDelaySwitchName": "Sonoff S26 Real Delay Switch", //friendly name of the real delay switch
+    "HeartbeatSwitchName": "Sonoff S26 Heartbeat Switch", //friendly name of the heartbeat switch
     "LogLevel": "Info", //set logging to info, error, warning and debug
     "LogFile": true //get a log file besides the RPiMP.py as RPiMP.log
 }
 ```
+
+#### ESP Home
+
+The `sonoffs26.yaml` yaml is an example that could be used if you have a Sonoff S26 laying around. If you create your own, please use the `sonoffs26.yaml` as a reference. All sensors, scripts and global from that example are needed to get it all up and running.
+
+#### Time
+
+The time config is for booting and shutting down the RPi. The esp device can, with this configuration, operate completely standalone.
+
+#### Heartbeat
+
+The heartbeat switch is a switche that is switched on bij RPiMP when there is an state update within the ESP device. This update is generally done by the `Current time` text sensor. If the heartbeats are missed for the number defined in `max_heartbeat_missed` in the yaml of your ESP device, the relay will be switched off. It assumes the RPi does not have a connection anymore and therefor it will cut off the power.
+
+## Changelog
+
+### 2023.9.19.1
+
+- Heartbeat introduced
+- Documentation updates
+
+### 2023.8.5.1
+
+- Documentation updates
+- Minor fixes
+
+### 2023.8.4.1
+
+- Initial release

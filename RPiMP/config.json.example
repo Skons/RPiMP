@@ -3,6 +3,7 @@
     "EncryptionKey": "EncryptionKey",
     "DelaySwitchName": "Sonoff S26 Delay Switch",
     "RealDelaySwitchName": "Sonoff S26 Real Delay Switch",
+    "HeartbeatSwitchName": "Sonoff S26 Heartbeat Switch",
     "LogLevel": "Info",
     "LogFile": true
 }
